@@ -1,0 +1,401 @@
+import { useEffect, useRef, useState } from "react";
+import { NestingResult, getEntityBoundingBox, DxfEntity } from "@/lib/dxf";
+import { Button } from "@/components/ui/button";
+import { ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
+
+interface NestingViewerProps {
+  nestingResults: NestingResult[];
+  selectedVariant: number;
+}
+
+export const NestingViewer = ({ nestingResults, selectedVariant }: NestingViewerProps) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+
+  // Обновляем размеры canvas при изменении размера контейнера
+  useEffect(() => {
+    const updateDimensions = () => {
+      if (containerRef.current) {
+        const width = containerRef.current.clientWidth;
+        const height = containerRef.current.clientHeight;
+        setDimensions({ width: Math.max(width, 400), height: Math.max(height, 300) });
+      }
+    };
+
+    updateDimensions();
+    window.addEventListener('resize', updateDimensions);
+    return () => window.removeEventListener('resize', updateDimensions);
+  }, []);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || nestingResults.length === 0) return;
+
+    const result = nestingResults[selectedVariant] || nestingResults[0];
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    console.log("Rendering nesting result:", {
+      placedParts: result.placedParts.length,
+      sheetWidth: result.sheetWidth,
+      sheetHeight: result.sheetHeight
+    });
+
+    // Очищаем canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const padding = 40;
+    const baseScale = Math.min(
+      (canvas.width - padding * 2) / result.sheetWidth,
+      (canvas.height - padding * 2) / result.sheetHeight
+    );
+
+    const scale = baseScale * zoom;
+
+    const offsetX = (canvas.width - result.sheetWidth * scale) / 2 + pan.x;
+    const offsetY = (canvas.height - result.sheetHeight * scale) / 2 + pan.y;
+
+    // Рисуем границу листа
+    ctx.strokeStyle = "#ff0000";
+    ctx.lineWidth = 3;
+    ctx.strokeRect(
+      offsetX,
+      offsetY,
+      result.sheetWidth * scale,
+      result.sheetHeight * scale
+    );
+
+    // Рисуем размеры листа
+    ctx.fillStyle = "#000000";
+    ctx.font = "bold 16px Arial";
+    ctx.textAlign = "center";
+    
+    // Ширина сверху
+    const widthInMeters = (result.sheetWidth / 1000).toFixed(2);
+    ctx.fillText(
+      `${widthInMeters} м`,
+      offsetX + (result.sheetWidth * scale) / 2,
+      offsetY - 10
+    );
+
+    // Высота сбоку
+    ctx.save();
+    ctx.translate(offsetX - 15, offsetY + (result.sheetHeight * scale) / 2);
+    ctx.rotate(-Math.PI / 2);
+    const heightInMeters = (result.sheetHeight / 1000).toFixed(2);
+    ctx.fillText(`${heightInMeters} м`, 0, 0);
+    ctx.restore();
+
+    // Рисуем размещенные детали
+    // Фиксированная тонкая линия, визуально как в предпросмотре DXF
+    const lineWidth = 1;
+
+    console.log("Drawing parts:", result.placedParts.length);
+
+    for (let i = 0; i < result.placedParts.length; i++) {
+      const placed = result.placedParts[i];
+      console.log(`Drawing placed part ${i}:`, {
+        id: placed.part.id,
+        x: placed.x,
+        y: placed.y,
+        rotation: placed.rotation,
+        innerContours: placed.part.innerContours.length
+      });
+
+      ctx.save();
+
+      const x = offsetX + placed.x * scale;
+      const y = offsetY + placed.y * scale;
+
+      ctx.translate(x, y);
+      if (placed.rotation !== 0) {
+        ctx.rotate((placed.rotation * Math.PI) / 180);
+      }
+
+      // Рисуем внешний контур (черный) относительно bbox детали
+      drawEntity(ctx, placed.part.outerContour, scale, "#000000", lineWidth, placed.part.boundingBox);
+
+      // Рисуем внутренние вырезы (черный) относительно того же bbox
+      for (const innerContour of placed.part.innerContours) {
+        drawEntity(ctx, innerContour, scale, "#000000", lineWidth, placed.part.boundingBox);
+      }
+
+      ctx.restore();
+    }
+  }, [nestingResults, selectedVariant, dimensions, zoom, pan]);
+
+  if (nestingResults.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-full text-muted-foreground">
+        Загрузите DXF файл для просмотра раскроя
+      </div>
+    );
+  }
+
+  const result = nestingResults[selectedVariant] || nestingResults[0];
+
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    setZoom(prev => Math.min(Math.max(prev * delta, 0.5), 5));
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true);
+    setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (isDragging) {
+      setPan({
+        x: e.clientX - dragStart.x,
+        y: e.clientY - dragStart.y
+      });
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleZoomIn = () => {
+    setZoom(prev => Math.min(prev * 1.2, 5));
+  };
+
+  const handleZoomOut = () => {
+    setZoom(prev => Math.max(prev / 1.2, 0.5));
+  };
+
+  const handleReset = () => {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+  };
+
+  return (
+    <div className="flex flex-col h-full gap-3 min-h-0">
+      <div className="flex gap-2 flex-shrink-0">
+        <Button 
+          size="sm" 
+          variant="outline" 
+          onClick={handleZoomIn}
+          title="Увеличить (или колесо мыши)"
+        >
+          <ZoomIn className="h-4 w-4" />
+        </Button>
+        <Button 
+          size="sm" 
+          variant="outline" 
+          onClick={handleZoomOut}
+          title="Уменьшить"
+        >
+          <ZoomOut className="h-4 w-4" />
+        </Button>
+        <Button 
+          size="sm" 
+          variant="outline" 
+          onClick={handleReset}
+          title="Сбросить вид"
+        >
+          <Maximize2 className="h-4 w-4" />
+        </Button>
+        <div className="flex items-center text-xs text-muted-foreground ml-2">
+          Масштаб: {(zoom * 100).toFixed(0)}%
+        </div>
+      </div>
+      <div 
+        ref={containerRef} 
+        className="flex-1 flex items-center justify-center min-h-0 overflow-hidden bg-muted/20 rounded-lg cursor-move"
+        onWheel={handleWheel}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+      >
+        <canvas
+          ref={canvasRef}
+          width={dimensions.width}
+          height={dimensions.height}
+          className="max-w-full max-h-full"
+        />
+      </div>
+
+      <div className="space-y-3 p-3 bg-muted/50 rounded-lg flex-shrink-0">
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <div className="text-xs text-muted-foreground">Площадь листа</div>
+            <div className="text-lg font-bold">{result.sheetArea.toFixed(3)} м²</div>
+          </div>
+          <div>
+            <div className="text-xs text-muted-foreground">Эффективность</div>
+            <div className="text-lg font-bold text-primary">{result.efficiency.toFixed(1)}%</div>
+          </div>
+          <div>
+            <div className="text-xs text-muted-foreground">Стоимость металла</div>
+            <div className="text-2xl font-bold text-primary">{result.metalCost.toFixed(2)} ₽</div>
+          </div>
+          <div>
+            <div className="text-xs text-muted-foreground">Использовано</div>
+            <div className="text-lg font-bold">{result.usedArea.toFixed(3)} м²</div>
+          </div>
+        </div>
+        
+        {result.unplacedParts && result.unplacedParts.length > 0 && (
+          <div className="p-2 bg-destructive/10 border border-destructive rounded-md">
+            <p className="text-xs font-semibold text-destructive">
+              ⚠ Не удалось разместить {result.unplacedParts.length} деталей
+            </p>
+          </div>
+        )}
+        
+        <div className="text-xs text-muted-foreground">
+          Размещено деталей: {result.placedParts.length}
+          {result.unplacedParts && result.unplacedParts.length > 0 && 
+            ` из ${result.placedParts.length + result.unplacedParts.length}`}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+function drawEntity(
+  ctx: CanvasRenderingContext2D,
+  entity: DxfEntity,
+  scale: number,
+  color: string,
+  lineWidth: number,
+  partBbox: { minX: number; minY: number; maxX: number; maxY: number }
+) {
+  // Используем bbox детали, а не bbox самой entity
+  // Это гарантирует, что все контуры детали рисуются в правильных относительных позициях
+
+  ctx.strokeStyle = color;
+  ctx.lineWidth = lineWidth;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  switch (entity.type) {
+    case "LINE":
+      if (entity.vertices && entity.vertices.length >= 2) {
+        ctx.beginPath();
+        ctx.moveTo(
+          (entity.vertices[0].x - partBbox.minX) * scale,
+          (entity.vertices[0].y - partBbox.minY) * scale
+        );
+        ctx.lineTo(
+          (entity.vertices[1].x - partBbox.minX) * scale,
+          (entity.vertices[1].y - partBbox.minY) * scale
+        );
+        ctx.stroke();
+      }
+      break;
+
+    case "LWPOLYLINE":
+    case "POLYLINE":
+      if (entity.vertices && entity.vertices.length > 0) {
+        ctx.beginPath();
+        ctx.moveTo(
+          (entity.vertices[0].x - partBbox.minX) * scale,
+          (entity.vertices[0].y - partBbox.minY) * scale
+        );
+        for (let i = 1; i < entity.vertices.length; i++) {
+          ctx.lineTo(
+            (entity.vertices[i].x - partBbox.minX) * scale,
+            (entity.vertices[i].y - partBbox.minY) * scale
+          );
+        }
+        if (entity.shape || entity.closed) {
+          ctx.closePath();
+        }
+        ctx.stroke();
+      }
+      break;
+
+    case "CIRCLE":
+      if (entity.center && entity.radius !== undefined) {
+        ctx.beginPath();
+        ctx.arc(
+          (entity.center.x - partBbox.minX) * scale,
+          (entity.center.y - partBbox.minY) * scale,
+          entity.radius * scale,
+          0,
+          2 * Math.PI
+        );
+        ctx.stroke();
+      }
+      break;
+
+    case "ARC":
+      if (entity.center && entity.radius !== undefined) {
+        ctx.beginPath();
+        ctx.arc(
+          (entity.center.x - partBbox.minX) * scale,
+          (entity.center.y - partBbox.minY) * scale,
+          entity.radius * scale,
+          (entity.startAngle || 0) * Math.PI / 180,
+          (entity.endAngle || 0) * Math.PI / 180
+        );
+        ctx.stroke();
+      }
+      break;
+
+    case "ELLIPSE":
+      if (entity.center && entity.majorAxisEndPoint) {
+        ctx.beginPath();
+        const cx = (entity.center.x - partBbox.minX) * scale;
+        const cy = (entity.center.y - partBbox.minY) * scale;
+        
+        const a = Math.sqrt(
+          entity.majorAxisEndPoint.x ** 2 + entity.majorAxisEndPoint.y ** 2
+        ) * scale;
+        const b = a * (entity.axisRatio || 1);
+        
+        const rotation = Math.atan2(
+          entity.majorAxisEndPoint.y,
+          entity.majorAxisEndPoint.x
+        );
+        
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(rotation);
+        ctx.ellipse(0, 0, a, b, 0, 0, 2 * Math.PI);
+        ctx.restore();
+        ctx.stroke();
+      }
+      break;
+
+    case "SPLINE":
+      if (entity.controlPoints && entity.controlPoints.length > 1) {
+        ctx.beginPath();
+        const first = entity.controlPoints[0];
+        ctx.moveTo(
+          (first.x - partBbox.minX) * scale,
+          (first.y - partBbox.minY) * scale
+        );
+        
+        for (let i = 1; i < entity.controlPoints.length; i++) {
+          const p = entity.controlPoints[i];
+          ctx.lineTo(
+            (p.x - partBbox.minX) * scale,
+            (p.y - partBbox.minY) * scale
+          );
+        }
+        
+        if (entity.closed) {
+          ctx.closePath();
+        }
+        
+        ctx.stroke();
+      }
+      break;
+
+    default:
+      console.warn(`Unhandled entity type: ${entity.type}`);
+  }
+}
