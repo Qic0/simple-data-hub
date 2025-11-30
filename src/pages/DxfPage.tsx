@@ -237,8 +237,8 @@ export default function DxfPage() {
           {/* Center Column - Viewer */}
           <div className="flex-1 flex flex-col min-w-0">
             <Card className="flex-1 flex flex-col">
-              <CardHeader className="py-2 border-b flex flex-row items-center justify-between">
-                <CardTitle className="text-lg">Предварительный просмотр</CardTitle>
+              <CardHeader className="pb-3 border-b flex flex-row items-center justify-between min-h-[52px]">
+                <CardTitle className="text-base">Предварительный просмотр</CardTitle>
                 {isCreatingNew && dxfConfig.fileName && <Button onClick={handleFinishPart}>
                     В корзину
  
@@ -369,7 +369,7 @@ export default function DxfPage() {
           {/* Right Column - Finished Parts List */}
           <div className="w-80 flex flex-col">
             <Card className="flex-1 flex flex-col">
-              <CardHeader className="pb-3 border-b">
+              <CardHeader className="pb-3 border-b min-h-[52px]">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Package className="w-4 h-4" />
                   Корзина
