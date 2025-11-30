@@ -393,8 +393,8 @@ export default function DxfPage() {
                             }`} 
                             onClick={() => handleSelectPart(part.id)}
                           >
-                            <div className="flex items-center gap-3 p-2.5">
-                              {/* Content - vertical layout */}
+                            <div className="flex items-center gap-2.5 p-2.5">
+                              {/* Left content - vertical layout */}
                               <div className="flex-1 min-w-0 space-y-1.5">
                                 {/* Header row with ID and actions */}
                                 <div className="flex justify-between items-start gap-2">
@@ -447,33 +447,34 @@ export default function DxfPage() {
                                   </div>
                                   <div className="flex items-center gap-1.5">
                                     <Layers className="h-3 w-3 flex-shrink-0" />
-                                    <span>{materialInfo.name} {part.config.thickness}мм</span>
+                                    <span>
+                                      {part.config.material === 'steel' ? 'Сталь СТ3' : materialInfo.name} {part.config.thickness}мм: {part.config.sheetArea?.toFixed(2) || 0} м²
+                                    </span>
                                   </div>
-                                </div>
-
-                                {/* Price */}
-                                <div>
-                                  <span className="text-base font-bold text-primary">
-                                    {part.config.price.toFixed(2)} ₽
-                                  </span>
                                 </div>
                               </div>
 
-                              {/* Large Avatar with preview - moved to right */}
-                              <div className="flex-shrink-0">
-                                <Avatar className="w-24 h-24 rounded-xl border-2 border-border">
+                              {/* Separator */}
+                              <div className="h-20 w-px bg-border flex-shrink-0" />
+
+                              {/* Right content - avatar and price */}
+                              <div className="flex-shrink-0 flex flex-col items-center gap-1.5">
+                                <Avatar className="w-16 h-16 rounded-lg border border-border">
                                   {part.config.previewImage ? (
                                     <AvatarImage 
                                       src={part.config.previewImage} 
                                       alt={part.config.fileName}
-                                      className="object-contain p-2"
+                                      className="object-contain p-1.5"
                                     />
                                   ) : (
-                                    <AvatarFallback className="rounded-xl bg-muted">
-                                      <FileText className="w-10 h-10 text-muted-foreground" />
+                                    <AvatarFallback className="rounded-lg bg-muted">
+                                      <FileText className="w-8 h-8 text-muted-foreground" />
                                     </AvatarFallback>
                                   )}
                                 </Avatar>
+                                <span className="text-sm font-bold text-primary whitespace-nowrap">
+                                  {part.config.price.toFixed(2)} ₽
+                                </span>
                               </div>
                             </div>
                           </Card>
