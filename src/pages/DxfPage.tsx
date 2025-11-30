@@ -393,8 +393,73 @@ export default function DxfPage() {
                             }`} 
                             onClick={() => handleSelectPart(part.id)}
                           >
-                            <div className="flex items-center gap-4 p-4">
-                              {/* Large Avatar with preview */}
+                            <div className="flex items-center gap-3 p-2.5">
+                              {/* Content - vertical layout */}
+                              <div className="flex-1 min-w-0 space-y-1.5">
+                                {/* Header row with ID and actions */}
+                                <div className="flex justify-between items-start gap-2">
+                                  <Badge 
+                                    variant={selectedPartId === part.id && !isCreatingNew ? "default" : "outline"} 
+                                    className="text-xs font-mono"
+                                  >
+                                    {part.id}
+                                  </Badge>
+                                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                    <Button 
+                                      size="sm" 
+                                      variant="ghost" 
+                                      className="h-6 w-6 p-0 hover:bg-primary/10 hover:text-primary" 
+                                      onClick={e => {
+                                        e.stopPropagation();
+                                        handleEditPart(part.id);
+                                      }}
+                                    >
+                                      <Pencil className="h-3 w-3" />
+                                    </Button>
+                                    <Button 
+                                      size="sm" 
+                                      variant="ghost" 
+                                      className="h-6 w-6 p-0 hover:bg-destructive/10 hover:text-destructive" 
+                                      onClick={e => {
+                                        e.stopPropagation();
+                                        handleDeletePart(part.id);
+                                      }}
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                </div>
+
+                                {/* File name */}
+                                <div className="text-xs font-medium text-foreground truncate" title={part.config.fileName}>
+                                  {part.config.fileName}
+                                </div>
+
+                                {/* Parameters - compact */}
+                                <div className="space-y-0.5 text-xs text-muted-foreground">
+                                  <div className="flex items-center gap-1.5">
+                                    <Ruler className="h-3 w-3 flex-shrink-0" />
+                                    <span>{part.config.vectorLength.toFixed(2)} м</span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    <Circle className="h-3 w-3 flex-shrink-0" />
+                                    <span>{part.config.piercePoints || 0} точек</span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    <Layers className="h-3 w-3 flex-shrink-0" />
+                                    <span>{materialInfo.name} {part.config.thickness}мм</span>
+                                  </div>
+                                </div>
+
+                                {/* Price */}
+                                <div>
+                                  <span className="text-base font-bold text-primary">
+                                    {part.config.price.toFixed(2)} ₽
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Large Avatar with preview - moved to right */}
                               <div className="flex-shrink-0">
                                 <Avatar className="w-24 h-24 rounded-xl border-2 border-border">
                                   {part.config.previewImage ? (
@@ -409,71 +474,6 @@ export default function DxfPage() {
                                     </AvatarFallback>
                                   )}
                                 </Avatar>
-                              </div>
-
-                              {/* Content - vertical layout */}
-                              <div className="flex-1 min-w-0 space-y-2">
-                                {/* Header row with ID and actions */}
-                                <div className="flex justify-between items-start gap-2">
-                                  <Badge 
-                                    variant={selectedPartId === part.id && !isCreatingNew ? "default" : "outline"} 
-                                    className="text-xs font-mono"
-                                  >
-                                    {part.id}
-                                  </Badge>
-                                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                                    <Button 
-                                      size="sm" 
-                                      variant="ghost" 
-                                      className="h-7 w-7 p-0 hover:bg-primary/10 hover:text-primary" 
-                                      onClick={e => {
-                                        e.stopPropagation();
-                                        handleEditPart(part.id);
-                                      }}
-                                    >
-                                      <Pencil className="h-3.5 w-3.5" />
-                                    </Button>
-                                    <Button 
-                                      size="sm" 
-                                      variant="ghost" 
-                                      className="h-7 w-7 p-0 hover:bg-destructive/10 hover:text-destructive" 
-                                      onClick={e => {
-                                        e.stopPropagation();
-                                        handleDeletePart(part.id);
-                                      }}
-                                    >
-                                      <Trash2 className="h-3.5 w-3.5" />
-                                    </Button>
-                                  </div>
-                                </div>
-
-                                {/* File name */}
-                                <div className="text-sm font-medium text-foreground truncate" title={part.config.fileName}>
-                                  {part.config.fileName}
-                                </div>
-
-                                {/* Parameters - each on separate line */}
-                                <div className="space-y-1 text-xs text-muted-foreground">
-                                  <div className="flex items-center gap-1.5">
-                                    <Ruler className="h-3.5 w-3.5 flex-shrink-0" />
-                                    <span>Длина реза: {part.config.vectorLength.toFixed(2)} м</span>
-                                  </div>
-                                  <div className="flex items-center gap-1.5">
-                                    <Circle className="h-3.5 w-3.5 flex-shrink-0" />
-                                    <span>Точки: {part.config.piercePoints || 0}</span>
-                                  </div>
-                                  <div className="flex items-center gap-1.5">
-                                    <Layers className="h-3.5 w-3.5 flex-shrink-0" />
-                                    <span>{materialInfo.name} {part.config.thickness} мм: {part.config.sheetArea?.toFixed(2) || 0} м²</span>
-                                  </div>
-                                </div>
-
-                                {/* Price */}
-                                <div className="pt-1">
-                                  <span className="text-lg font-bold text-primary">
-                                    {part.config.price.toFixed(2)} ₽
-                                  </span>
-                                </div>
                               </div>
                             </div>
                           </Card>
