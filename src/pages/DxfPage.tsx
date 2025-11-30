@@ -484,13 +484,16 @@ export default function DxfPage() {
                 </div>
                 
                 {finishedParts.length > 0 && (
-                  <div className="border-t pt-3 mt-3">
+                  <div className="border-t pt-3 mt-3 space-y-3">
                     <div className="flex justify-between items-center">
                       <span className="text-base font-semibold">Итого:</span>
                       <span className="text-xl font-bold text-primary">
                         {totalPrice.toFixed(2)} ₽
                       </span>
                     </div>
+                    <Button className="w-full" size="lg">
+                      Оформить заказ
+                    </Button>
                   </div>
                 )}
               </CardContent>
