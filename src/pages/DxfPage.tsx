@@ -438,12 +438,12 @@ export default function DxfPage() {
                                 {/* Parameters - compact */}
                                 <div className="space-y-0.5 text-xs text-muted-foreground">
                                   <div className="flex items-center gap-1.5">
-                                    <Ruler className="h-3 w-3 flex-shrink-0" />
-                                    <span>{part.config.vectorLength.toFixed(2)} м</span>
+                                    <Circle className="h-3 w-3 flex-shrink-0" />
+                                    <span>Точки врезки: {part.config.piercePoints || 0}</span>
                                   </div>
                                   <div className="flex items-center gap-1.5">
-                                    <Circle className="h-3 w-3 flex-shrink-0" />
-                                    <span>{part.config.piercePoints || 0} точек</span>
+                                    <Ruler className="h-3 w-3 flex-shrink-0" />
+                                    <span>Длина реза: {part.config.vectorLength.toFixed(0)} м</span>
                                   </div>
                                   <div className="flex items-center gap-1.5">
                                     <Layers className="h-3 w-3 flex-shrink-0" />
